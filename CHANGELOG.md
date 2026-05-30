@@ -3,18 +3,22 @@
 All notable changes to **Mnemo** are documented here. Versioning is semver-ish
 during 0.x.
 
+## [0.4.0]
+### Added
+- `memory_stats` MCP tool + `mnemo stats` — graph analytics (entity/relationship/fact
+  counts, entities-by-type, most-central entities).
+- Memory-adaptive extraction context window: sizes `num_ctx` to detected unified
+  memory (4096 ≤8 GB / 8192 ≤16 GB / 16384 above) unless `MNEMO_NUM_CTX` is set.
+- Full-pipeline integration test (ingest→extract→graph→digest→index→query, mocked LLM).
+### Fixed
+- `memory_query(scope="all")` no longer crashes when projects have indexes of
+  different embedding dimensions (e.g. different embed models) — mismatched indexes
+  are skipped.
+
 ## [0.3.1]
 ### Added
 - Expanded test coverage to 20 (pipeline health, empty-graph digest, store round-trip, updater version compare).
 - README table of contents; professional repo description + topics on GitHub.
-
-## [0.3.0] — Auto-update
-### Added
-- **Self-update to the latest GitHub release**: `memory_self_update` MCP tool +
-  `mnemo self-update` / `mnemo check-update` CLI. Safe fast-forward (`git pull
-  --ff-only`, never discards local changes) and reinstall.
-- The server **checks** for a newer release on start and notifies. `MNEMO_AUTO_UPDATE`
-  (`check` default / `auto` / `off`); fully-unattended auto-pull is opt-in by design.
 
 ## [0.3.0] — Self-update
 ### Added

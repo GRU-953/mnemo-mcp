@@ -111,6 +111,15 @@ def cmd_list(a: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_stats(a: argparse.Namespace) -> int:
+    project = _resolve_project(a.project)
+    if not project:
+        print("Specify --project", file=sys.stderr)
+        return 1
+    print(json.dumps(store.project_stats(project), indent=2))
+    return 0
+
+
 def cmd_link(a: argparse.Namespace) -> int:
     from .core import reuse
     res = reuse.link_projects(a.into, a.from_project, query=a.query or None, k=a.k)
@@ -194,6 +203,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     sp = sub.add_parser("list", help="list projects in the store")
     sp.set_defaults(func=cmd_list)
+
+    sp = sub.add_parser("stats", help="graph analytics for a project")
+    sp.add_argument("--project")
+    sp.set_defaults(func=cmd_stats)
 
     sp = sub.add_parser("link", help="import entities/facts from one project into another")
     sp.add_argument("--into", required=True, help="target project id")

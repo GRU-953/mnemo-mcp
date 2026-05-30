@@ -6,6 +6,7 @@ facts, each tagged with provenance (source file + chunk). All local; no tokens.
 """
 from __future__ import annotations
 
+import os
 import re
 import time
 from pathlib import Path
@@ -13,6 +14,23 @@ from typing import Any, Callable
 
 from . import config, store
 from . import ollama_client as oll
+
+_NUM_CTX: int | None = None
+
+
+def _num_ctx() -> int:
+    """Effective extraction context window: explicit MNEMO_NUM_CTX if set, else
+    sized to detected unified memory (4096 ≤8 GB, 8192 ≤16 GB, 16384 above)."""
+    global _NUM_CTX
+    if _NUM_CTX is not None:
+        return _NUM_CTX
+    env = os.environ.get("MNEMO_NUM_CTX")
+    if env and env.isdigit():
+        _NUM_CTX = int(env)
+    else:
+        from . import platform_tuning
+        _NUM_CTX = platform_tuning.recommended_num_ctx(platform_tuning.hardware_info().get("ram_gb"))
+    return _NUM_CTX
 
 EXTRACT_SYSTEM = (
     "You are a precise knowledge-graph extraction engine. Extract ONLY the most "
@@ -117,7 +135,7 @@ def extract_chunk(text: str, *, model: str | None = None, source: dict | None = 
         try:
             raw = oll.generate(
                 prompt, model=model, system=EXTRACT_SYSTEM, fmt="json",
-                temperature=config.EXTRACT_TEMPERATURE, num_ctx=config.EXTRACT_NUM_CTX,
+                temperature=config.EXTRACT_TEMPERATURE, num_ctx=_num_ctx(),
                 num_predict=1024, keep_alive="30m", timeout=400,
             )
             break

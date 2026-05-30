@@ -134,6 +134,17 @@ def memory_expand(entity: str, project: str = "", depth: int = 1) -> str:
 
 
 @mcp.tool()
+def memory_stats(project: str = "") -> str:
+    """Compact analytics for a project's memory graph: entity / relationship / fact
+    counts, a breakdown of entities by type, and the most central entities.
+    Read-only; token-cheap."""
+    pid = _resolve(project)
+    if not pid:
+        return _need_project()
+    return json.dumps(store.project_stats(pid), indent=2)
+
+
+@mcp.tool()
 def memory_list_projects() -> str:
     """List every project in the global memory store with entity/edge counts and
     source folders. Memory persists across sessions and is reusable across projects."""
