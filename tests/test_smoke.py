@@ -310,6 +310,34 @@ def test_parallel_ingest():
     assert len(mds) == 6, f"expected 6 md outputs, got {len(mds)}"
 
 
+def test_updater_logic():
+    from mnemo.core import updater as up
+    assert up._ver_key("v0.2.0") < up._ver_key("0.3.0")
+    assert up._ver_key("0.10.0") > up._ver_key("0.9.9")
+    assert up._ver_key("v1.0.0") == up._ver_key("1.0.0")
+    cv = up.current_version()
+    assert isinstance(cv, str) and cv[0].isdigit()
+    assert "/" in up.repo_slug()
+
+
+def test_updater_version_compare():
+    from mnemo.core import updater as up
+    assert up._ver_key("v0.2.0") < up._ver_key("0.3.0")
+    assert up._ver_key("0.1.10") > up._ver_key("0.1.2")
+    assert up.current_version() == up.current_version()  # stable
+    real = up.latest_release
+    try:
+        up.latest_release = lambda timeout=8.0: {"tag": "v9.9.9", "name": "x", "url": "u"}
+        r = up.check_update()
+        assert r["available"] is True and r["latest"] == "9.9.9"
+        up.latest_release = lambda timeout=8.0: {"tag": "v0.0.1"}
+        assert up.check_update()["available"] is False
+        up.latest_release = lambda timeout=8.0: None
+        assert up.check_update()["available"] is False
+    finally:
+        up.latest_release = real
+
+
 def _run_all():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     passed = 0

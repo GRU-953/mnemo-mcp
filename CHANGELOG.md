@@ -3,6 +3,22 @@
 All notable changes to **Mnemo** are documented here. Versioning is semver-ish
 during 0.x.
 
+## [0.3.0] — Auto-update
+### Added
+- **Self-update to the latest GitHub release**: `memory_self_update` MCP tool +
+  `mnemo self-update` / `mnemo check-update` CLI. Safe fast-forward (`git pull
+  --ff-only`, never discards local changes) and reinstall.
+- The server **checks** for a newer release on start and notifies. `MNEMO_AUTO_UPDATE`
+  (`check` default / `auto` / `off`); fully-unattended auto-pull is opt-in by design.
+
+## [0.3.0] — Self-update
+### Added
+- **Stay on the latest release**: `mnemo check-update`, `mnemo self-update`, and the
+  `memory_self_update` MCP tool — a fast-forward `git pull` of the plugin checkout
+  + reinstall (never discards local changes; ff-only). On server start
+  `MNEMO_AUTO_UPDATE` controls behavior: `check` (default — only notifies if an
+  update exists), `auto` (apply automatically), `off`.
+
 ## [0.2.0] — Apple-silicon optimization
 ### Added
 - **Parallel ingestion** across CPU cores (auto-sized worker pool) — much faster

@@ -87,6 +87,8 @@ Add `--with-audio` to also enable audio/video transcription (faster-whisper).
 ./.venv/bin/python -m mnemo.cli query "data governance" --scope all   # across all projects
 ./.venv/bin/python -m mnemo.cli expand "ADEX Group"
 ./.venv/bin/python -m mnemo.cli mindmap                      # open the HTML graph
+./.venv/bin/python -m mnemo.cli check-update                 # is a newer release out?
+./.venv/bin/python -m mnemo.cli self-update                  # fast-forward to the latest release
 ```
 
 ## Use it from Claude (MCP plugin)
@@ -104,6 +106,7 @@ Once installed as a Claude Code plugin, Claude can call these tools (and the
 | `memory_list_projects()` | All projects + counts. |
 | `memory_open_mindmap(project?)` | Open the interactive graph. |
 | `memory_status()` | Stack health. |
+| `memory_self_update()` | Update the plugin to the latest GitHub release. |
 
 ### Install the plugin
 
@@ -125,6 +128,21 @@ once, so knowledge built for one project is available to others. Copy a
 `~/.claude-memory/projects/<id>/` folder to move a project's memory to another
 machine.
 
+## Staying up to date
+
+The plugin tracks GitHub releases. On start it **checks** for a newer release and
+notes it; updating is a single, safe fast-forward:
+
+```bash
+mnemo self-update          # or call the memory_self_update MCP tool
+```
+
+`self-update` does a `git pull --ff-only` of the plugin checkout (it never discards
+local changes) and reinstalls. Set `MNEMO_AUTO_UPDATE=auto` to fast-forward
+automatically on start, or `off` to disable the check. (Fully-unattended auto-pull
+is opt-in by design — pulling and running remote code on every start is a
+supply-chain risk, so the default only *notifies*.)
+
 ## Configuration (environment variables)
 
 | Variable | Default | Meaning |
@@ -136,6 +154,8 @@ machine.
 | `MNEMO_OCR_LANG` | `eng` | Tesseract languages, e.g. `eng+ben` |
 | `MNEMO_CHUNK_WORDS` | `1400` | extraction chunk size |
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama endpoint |
+| `MNEMO_AUTO_UPDATE` | `check` | `check` = notify if a newer release exists · `auto` = fast-forward pull on start · `off` |
+| `MNEMO_REPO` | `GRU-953/mnemo-mcp` | GitHub repo used for updates |
 
 ## Privacy
 
@@ -150,6 +170,21 @@ Extraction checkpoints after every document. If a build is interrupted (or Ollam
 hiccups), just re-run `memory_build` / `memory_update` for the same project — it
 **resumes** from where it stopped instead of restarting, and never marks a document
 "done" if its extraction errored. This keeps large corpora practical on a laptop.
+
+## Staying up to date
+
+Mnemo can keep itself on the latest GitHub release:
+
+```bash
+mnemo check-update     # is a newer release available?
+mnemo self-update      # fast-forward to it (ff-only git pull + reinstall)
+```
+
+From Claude, call the `memory_self_update` tool. On server start, `MNEMO_AUTO_UPDATE`
+controls behavior — `check` (default: only *notifies* if an update exists),
+`auto` (apply automatically), or `off`. The default is `check` rather than `auto`
+so the plugin never pulls and runs new code unattended; set `MNEMO_AUTO_UPDATE=auto`
+in your MCP config if you want hands-off updates.
 
 ## Apple-silicon optimization
 
