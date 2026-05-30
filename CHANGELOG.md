@@ -3,6 +3,12 @@
 All notable changes to **Mnemo** are documented here. Versioning is semver-ish
 during 0.x.
 
+## [0.1.7]
+### Fixed
+- Sync `__version__` (was stale at 0.1.0) and add `mnemo --version`.
+### Added
+- CI status badge in the README.
+
 ## [0.1.6]
 ### Fixed
 - Mind map: harden the embedded graph JSON against HTML injection — escape
