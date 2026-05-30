@@ -215,6 +215,7 @@ def extract_project(
     done_files: set[str] = set(prior.get("done_files", []) or [])
     n_chunks = int((prior.get("stats") or {}).get("chunks", 0) or 0)
     seen_hashes: dict[str, str] = {}
+    seen_stems: dict[str, int] = {}
     skipped_dups: list[str] = []
     consec_errors = 0
 
@@ -234,7 +235,18 @@ def extract_project(
             if progress:
                 progress(fi + 1, len(md_files), f"{rel} (duplicate of {seen_hashes[h]}, skipped)")
             continue
+        # Also skip format-variants of the same document: same name stem (e.g. a
+        # .docx and its .pdf export) with a similar text length. Conservative —
+        # only fires on a same-stem match within a comparable size band.
+        stem_key = str(Path(rel).parent / Path(Path(rel).stem).stem).lower()
+        prev_len = seen_stems.get(stem_key)
+        if len(norm) > 300 and prev_len and 0.6 <= len(norm) / max(prev_len, 1) <= 1.7:
+            skipped_dups.append(rel)
+            if progress:
+                progress(fi + 1, len(md_files), f"{rel} (format-variant of '{stem_key}', skipped)")
+            continue
         seen_hashes[h] = rel
+        seen_stems[stem_key] = len(norm)
 
         chunks = chunk_markdown(text)[: config.MAX_CHUNKS_PER_DOC]
         doc_errored = False
