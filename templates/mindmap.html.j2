@@ -53,6 +53,13 @@
     <span class="stats">{{ stats_line }}</span>
     <input id="search" type="search" placeholder="Search entities…" autocomplete="off">
     <button class="btn" id="fit">Fit</button>
+    <select class="btn" id="layout" title="Graph layout">
+      <option value="cose">force</option>
+      <option value="concentric">concentric</option>
+      <option value="breadthfirst">tree</option>
+      <option value="circle">circle</option>
+      <option value="grid">grid</option>
+    </select>
     <div class="legend" id="legend"></div>
   </header>
   <div class="main">
@@ -92,20 +99,29 @@
       { selector:'node.hi', style:{'border-width':3,'border-color':'#fff'} },
       { selector:'edge.hi', style:{'line-color':'#6ea8fe','target-arrow-color':'#6ea8fe','width':2,'text-opacity':1} }
     ],
-    layout:{name:'cose',animate:false,nodeRepulsion:9000,idealEdgeLength:95,padding:40,
-            componentSpacing:120,nodeOverlap:12,randomize:true}
+    layout: layoutOpts('cose')
   });
+  function layoutOpts(name){
+    const b={name:name, padding:40, fit:true, animate:(name!=='cose')};
+    if(name==='cose') return Object.assign(b,{nodeRepulsion:9000,idealEdgeLength:95,componentSpacing:120,nodeOverlap:12,randomize:true});
+    if(name==='concentric') return Object.assign(b,{concentric:n=>n.degree()+1,levelWidth:()=>3,minNodeSpacing:24});
+    if(name==='breadthfirst') return Object.assign(b,{spacingFactor:1.1});
+    return b;
+  }
   // legend + type toggles
   const types=[...new Set(nodeEls.map(e=>e.data.type))].sort();
+  const typeCounts={}; nodeEls.forEach(e=>{typeCounts[e.data.type]=(typeCounts[e.data.type]||0)+1;});
   const legend=document.getElementById('legend'), off=new Set();
   types.forEach(t=>{
     const c=document.createElement('span'); c.className='chip';
-    c.innerHTML='<span class="dot" style="background:'+colorFor(t)+'"></span>'+t;
+    c.innerHTML='<span class="dot" style="background:'+colorFor(t)+'"></span>'+t+' <b style="opacity:.55;font-weight:600">'+typeCounts[t]+'</b>';
     c.onclick=()=>{ off.has(t)?(off.delete(t),c.classList.remove('off')):(off.add(t),c.classList.add('off'));
       cy.nodes().forEach(n=>n.style('display',off.has(n.data('type'))?'none':'element')); };
     legend.appendChild(c);
   });
   document.getElementById('fit').onclick=()=>cy.fit(null,40);
+  const ls=document.getElementById('layout');
+  if(ls) ls.onchange=()=>cy.layout(layoutOpts(ls.value)).run();
   const panel=document.getElementById('panel');
   function clearHi(){cy.elements().removeClass('faded hi');}
   function showNode(n){
