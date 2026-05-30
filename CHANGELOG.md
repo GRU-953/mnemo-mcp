@@ -3,6 +3,11 @@
 All notable changes to **Mnemo** are documented here. Versioning is semver-ish
 during 0.x.
 
+## [0.1.5]
+### Added
+- Mind map: a layout switcher (force / concentric / tree / circle / grid) and
+  per-type entity counts in the legend, for easier exploration of larger graphs.
+
 ## [0.1.4]
 ### Added
 - `pyproject.toml` with a `mnemo` console script (`pip install -e .` → run `mnemo …`).
