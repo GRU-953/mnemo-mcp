@@ -142,6 +142,97 @@ def test_partial_error_rollback():
     assert "a.md" in done and "b.md" not in done, f"errored doc must not be marked done: {done}"
 
 
+_VOCAB = ["esg", "risk", "employee", "policy", "audit", "carbon", "energy", "data", "vendor", "quality"]
+
+
+def _install_ollama_mock():
+    """Deterministic bag-of-words embeddings so retrieval is testable offline."""
+    from mnemo.core import ollama_client as oll
+
+    def mock_embed(texts, model=None, timeout=180.0):
+        out = []
+        for t in texts:
+            tl = str(t).lower()
+            v = [float(tl.count(w)) for w in _VOCAB]
+            if sum(v) == 0:
+                v[0] = 1e-3
+            out.append(v)
+        return out
+
+    oll.embed = mock_embed
+    oll.ping = lambda timeout=2.0: True
+    oll.has_model = lambda name: True
+
+
+def test_slugify():
+    from mnemo.core import config
+    assert config.slugify("Hello World!") == "hello-world"
+    assert config.slugify("  ADEX  Group  ") == "adex-group"
+    assert config.slugify("") == "untitled"
+
+
+def test_ingest_file_iteration():
+    import os
+    import tempfile
+    from mnemo.core import ingest
+    d = tempfile.mkdtemp(prefix="mnemo-ingest-")
+    for name in ("real.txt", "deck.pptx", "link.gdoc", ".DS_Store", "._resfork", "sheet.gsheet"):
+        with open(os.path.join(d, name), "w") as f:
+            f.write("x")
+    names = {p.name for p in ingest.iter_source_files(d)}
+    assert "real.txt" in names and "deck.pptx" in names
+    assert "link.gdoc" not in names and "sheet.gsheet" not in names  # pointer stubs skipped
+    assert ".DS_Store" not in names and "._resfork" not in names      # junk skipped
+
+
+def test_query_and_expand_offline():
+    from mnemo.core import graph, index
+    _install_ollama_mock()
+    proj = "query-proj"
+    store.ensure_project(proj)
+    store.write_json(store.project_dir(proj) / "extractions.json", {
+        "entities": [
+            {"name": "ESG Risk Register", "type": "Issue", "description": "tracks esg risk", "aliases": [], "source": {"file": "x", "chunk": 0}},
+            {"name": "Employee Policy", "type": "Policy", "description": "employee policy rules", "aliases": [], "source": {"file": "x", "chunk": 0}},
+        ],
+        "relations": [{"source": "Employee Policy", "relation": "mitigates", "target": "ESG Risk Register", "src": {"file": "x", "chunk": 0}}],
+        "facts": [{"text": "The ESG risk register lists carbon risk.", "entities": ["ESG Risk Register"], "source": {"file": "x", "chunk": 0}}],
+    })
+    graph.build_graph(proj, embed=False)
+    assert index.build_index(proj)["vectors"] > 0
+    res = index.query("esg risk", project_id=proj, k=2)
+    assert res["nodes"], res
+    assert any("esg" in n["name"].lower() for n in res["nodes"]), res
+    ex = index.expand(proj, "ESG Risk Register")
+    assert ex["found"] and ex["center"]["name"] == "ESG Risk Register"
+
+
+def test_reuse_link_offline():
+    from mnemo.core import graph, index, reuse
+    _install_ollama_mock()
+    store.ensure_project("src-proj")
+    store.write_json(store.project_dir("src-proj") / "extractions.json", {
+        "entities": [{"name": "Carbon Credits", "type": "Concept", "description": "carbon energy credits", "aliases": [], "source": {"file": "s", "chunk": 0}}],
+        "relations": [], "facts": [{"text": "Carbon credits monetize energy.", "entities": ["Carbon Credits"], "source": {"file": "s", "chunk": 0}}],
+    })
+    graph.build_graph("src-proj", embed=False)
+    index.build_index("src-proj")
+    store.ensure_project("dst-proj")
+    store.write_json(store.project_dir("dst-proj") / "extractions.json", {
+        "entities": [{"name": "Vendor Audit", "type": "Process", "description": "vendor audit", "aliases": [], "source": {"file": "d", "chunk": 0}}],
+        "relations": [], "facts": [],
+    })
+    graph.build_graph("dst-proj", embed=False)
+    index.build_index("dst-proj")
+    r = reuse.link_projects("dst-proj", "src-proj", query=None, k=5)
+    assert r["linked"] >= 1, r
+    g = store.load_graph("dst-proj")
+    assert any(n.get("from_project") == "src-proj" for n in g["nodes"]), "imported nodes must be tagged"
+    # cross-project scope=all returns results from both projects
+    res = index.query("carbon energy", scope="all", k=5)
+    assert res["nodes"], res
+
+
 def _run_all():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     passed = 0

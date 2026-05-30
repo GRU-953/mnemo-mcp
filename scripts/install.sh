@@ -76,6 +76,8 @@ say "creating venv with $($PY --version 2>&1)…"
 ./.venv/bin/python -m pip install --quiet --upgrade pip wheel setuptools
 say "installing Python dependencies…"
 ./.venv/bin/python -m pip install --quiet -r requirements.txt || { warn "pip install failed"; exit 1; }
+# Install the package itself (editable) so the `mnemo` command is available.
+./.venv/bin/python -m pip install --quiet -e . --no-deps || warn "editable install failed (use python -m mnemo.cli instead)"
 if [ "$WITH_AUDIO" = "1" ]; then
   say "installing faster-whisper (audio/video transcription)…"
   ./.venv/bin/python -m pip install --quiet "faster-whisper>=1.0.0" || warn "faster-whisper install failed"
