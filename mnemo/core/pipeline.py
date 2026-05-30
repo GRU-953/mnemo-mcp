@@ -9,7 +9,7 @@ import shutil
 from pathlib import Path
 from typing import Callable
 
-from . import config, store, ingest, extract, graph, digest, index, render
+from . import config, store, ingest, extract, graph, digest, index, render, platform_tuning
 from . import ollama_client as oll
 
 Progress = Callable[[str, str], None]
@@ -37,6 +37,9 @@ def health() -> dict:
             "vision_ready": oll.has_model(config.VISION_MODEL),
         },
         "tesseract": ingest.tesseract_available(),
+        "hardware": platform_tuning.hardware_info(),
+        "ollama_tuning": platform_tuning.ollama_tuning_status(),
+        "ingest_workers": ingest._default_workers(),
         "store": str(config.store_root()),
         "projects": store.list_projects(),
     }

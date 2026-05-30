@@ -277,6 +277,39 @@ def test_format_variant_dedup():
     assert "other.txt.md" in done
 
 
+def test_platform_tuning():
+    from mnemo.core import platform_tuning as pt
+    hw = pt.hardware_info()
+    assert {"os", "arch", "cpu_count", "apple_silicon"} <= set(hw)
+    assert isinstance(hw["apple_silicon"], bool)
+    assert pt.recommended_num_ctx(8) == 4096
+    assert pt.recommended_num_ctx(16) == 8192
+    assert pt.recommended_num_ctx(None) == 8192
+    st = pt.ollama_tuning_status()
+    assert "OLLAMA_FLASH_ATTENTION" in st["recommended"]
+    assert "OLLAMA_KV_CACHE_TYPE" in st["recommended"]
+
+
+def test_parallel_ingest():
+    import os
+    import tempfile
+    from mnemo.core import ingest as ing
+    d = tempfile.mkdtemp(prefix="mnemo-par-")
+    for i in range(6):
+        with open(os.path.join(d, f"f{i}.txt"), "w") as f:
+            f.write("content " + str(i))
+    real = ing.convert_file
+    ing.convert_file = lambda p, **o: {"markdown": f"# {os.path.basename(str(p))}\n\nbody {p}", "method": "mock", "chars": 30}
+    try:
+        r = ing.ingest_dir(d, "par-proj", incremental=False, workers=4)
+    finally:
+        ing.convert_file = real
+    assert r["total"] == 6 and r["converted"] == 6, r
+    assert r["workers"] == 4
+    mds = list((store.project_dir("par-proj") / "sources").rglob("*.md"))
+    assert len(mds) == 6, f"expected 6 md outputs, got {len(mds)}"
+
+
 def _run_all():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     passed = 0
