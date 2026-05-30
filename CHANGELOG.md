@@ -3,6 +3,13 @@
 All notable changes to **Mnemo** are documented here. Versioning is semver-ish
 during 0.x.
 
+## [0.6.0] — Portable memory export
+### Added
+- `memory_export` MCP tool + `mnemo export --to <dir>` — copy a project's memory
+  out of the global store for reuse in any other chat/project: memory.md (optionally
+  named `CLAUDE.md`), plus optional graph.json / mindmap.html. Makes memory reusable
+  in Claude Desktop project knowledge or other repos without the MCP.
+
 ## [0.5.0] — On-demand local LLM
 ### Added
 - **On-demand Ollama lifecycle** (Apple-silicon memory): the local LLM starts only

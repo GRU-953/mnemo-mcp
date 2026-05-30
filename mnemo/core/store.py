@@ -122,6 +122,32 @@ def list_projects() -> list[dict]:
     return out
 
 
+def export_memory(project_id: str, dest_dir: str | Path, *, include_graph: bool = False,
+                  include_mindmap: bool = False, as_claude_md: bool = False) -> dict:
+    """Copy a project's memory out of the global store into `dest_dir`, so it can be
+    reused in any Claude chat/project (e.g. dropped into a Claude Desktop project's
+    knowledge, or a repo's CLAUDE.md). Returns the written file paths."""
+    import shutil
+    src_md = memory_md_path(project_id)
+    if not src_md.exists():
+        return {"exported": [], "error": f"no memory for '{project_id}' — build it first"}
+    dest = Path(dest_dir).expanduser()
+    dest.mkdir(parents=True, exist_ok=True)
+    written: list[str] = []
+    md_out = dest / ("CLAUDE.md" if as_claude_md else f"{project_id}-memory.md")
+    shutil.copyfile(src_md, md_out)
+    written.append(str(md_out))
+    if include_graph and graph_path(project_id).exists():
+        o = dest / f"{project_id}-graph.json"
+        shutil.copyfile(graph_path(project_id), o)
+        written.append(str(o))
+    if include_mindmap and mindmap_path(project_id).exists():
+        o = dest / f"{project_id}-mindmap.html"
+        shutil.copyfile(mindmap_path(project_id), o)
+        written.append(str(o))
+    return {"exported": written, "dest": str(dest)}
+
+
 def project_stats(project_id: str) -> dict:
     """Compact analytics for a project's graph (counts, type breakdown, top entities)."""
     from collections import Counter

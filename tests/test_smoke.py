@@ -470,6 +470,25 @@ def test_lifecycle_logic():
     assert {"managed", "up", "idle_timeout_secs", "keep_alive"} <= set(lc.status())
 
 
+def test_export_memory():
+    import os
+    import tempfile
+    proj = "exp-proj"
+    store.ensure_project(proj)
+    store.write_text(store.memory_md_path(proj), "# Project Memory — Exp\n\nhello world")
+    store.save_graph(proj, {"nodes": [{"id": "a", "name": "A"}], "edges": [], "facts": []})
+    d = tempfile.mkdtemp(prefix="mnemo-exp-")
+    r = store.export_memory(proj, d, include_graph=True, as_claude_md=True)
+    names = [os.path.basename(p) for p in r["exported"]]
+    assert "CLAUDE.md" in names
+    assert any(n.endswith("graph.json") for n in names)
+    assert os.path.exists(os.path.join(d, "CLAUDE.md"))
+    # default naming (not CLAUDE.md)
+    d2 = tempfile.mkdtemp(prefix="mnemo-exp2-")
+    r2 = store.export_memory(proj, d2)
+    assert os.path.basename(r2["exported"][0]) == f"{proj}-memory.md"
+
+
 def _run_all():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     passed = 0
