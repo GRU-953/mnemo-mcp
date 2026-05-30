@@ -19,6 +19,7 @@ import argparse
 import json
 import sys
 
+from . import __version__
 from .core import pipeline, store, index
 
 
@@ -135,6 +136,7 @@ def cmd_mindmap(a: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="mnemo", description="Local, token-free graph memory for Claude.")
+    p.add_argument("--version", action="version", version=f"mnemo {__version__}")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     sp = sub.add_parser("status", help="check local stack (Ollama, models, Tesseract, store)")
