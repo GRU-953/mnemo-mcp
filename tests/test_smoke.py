@@ -252,6 +252,31 @@ def test_mindmap_html_injection_safe():
     assert "\\u003c/script\\u003e" in html, "expected escaped </script> in embedded data"
 
 
+def test_format_variant_dedup():
+    """Same-name documents in different formats (e.g. report.docx + report.pdf)
+    should be de-duplicated by stem so the graph isn't doubled."""
+    from mnemo.core import extract as ex
+    proj = "dedup-proj"
+    sd = store.project_dir(proj) / "sources"
+    sd.mkdir(parents=True, exist_ok=True)
+    body = "# Report\n" + ("the quick brown fox jumps over the lazy dog " * 60)
+    (sd / "report.docx.md").write_text(body, encoding="utf-8")
+    (sd / "report.pdf.md").write_text(body + " minor extraction difference", encoding="utf-8")
+    (sd / "other.txt.md").write_text("# Other\n" + ("alpha beta gamma delta " * 60), encoding="utf-8")
+    real = ex.extract_chunk
+    ex.extract_chunk = lambda text, *, model=None, source=None: {
+        "entities": [{"name": "E", "type": "Concept", "description": "", "aliases": [], "source": source}],
+        "relations": [], "facts": []}
+    try:
+        ex.extract_project(proj, resume=False)
+    finally:
+        ex.extract_chunk = real
+    done = set(store.read_json(store.project_dir(proj) / "extractions.json").get("done_files", []))
+    assert "report.docx.md" in done
+    assert "report.pdf.md" not in done, "same-stem format variant should be skipped"
+    assert "other.txt.md" in done
+
+
 def _run_all():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     passed = 0

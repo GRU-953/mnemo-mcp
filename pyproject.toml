@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mnemo-mcp"
-version = "0.1.7"
+version = "0.1.8"
 description = "Local, token-free, graph-based project memory for Claude (MCP plugin)."
 readme = "README.md"
 license = { text = "MIT" }

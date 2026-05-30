@@ -3,6 +3,12 @@
 All notable changes to **Mnemo** are documented here. Versioning is semver-ish
 during 0.x.
 
+## [0.1.8]
+### Added
+- Format-variant de-duplication: documents sharing a name stem in different
+  formats (e.g. a `.docx` and its `.pdf` export) are detected by stem + a size
+  guard and extracted once — cleaner graph and faster builds.
+
 ## [0.1.7]
 ### Fixed
 - Sync `__version__` (was stale at 0.1.0) and add `mnemo --version`.
