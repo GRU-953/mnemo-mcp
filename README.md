@@ -37,6 +37,13 @@ an **interactive HTML mind map** — and it is **reusable across projects**.
 | **Where compute happens** | Claude (paid tokens) | your machine (free, local) |
 | **Persistence** | none (per-conversation) | global store, reusable across sessions & projects |
 
+**Measured on a real 62-file project** (PDFs, DOCX, PPTX, spreadsheets, scanned
+images): the converted source text is **≈ 440,000 tokens**. Mnemo turns it into a
+**≈ 1,000-token** `memory.md` digest (**~450× smaller**) plus a graph and mind map
+— and the extraction itself runs on the local LLM, so the **Claude-token cost to
+build is ≈ 0**. A typical `memory_query` answer is **~200 tokens**. Loading full
+project context this way costs ~1k tokens instead of ~440k.
+
 ## What you get
 
 - **Knowledge graph** (`graph.json`) — entities, typed relationships, atomic facts,

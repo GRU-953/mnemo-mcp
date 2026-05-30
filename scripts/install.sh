@@ -93,9 +93,8 @@ fi
 say "verifying…"
 ./.venv/bin/python -m mnemo.cli status || true
 
-cat <<EOF
-
-\033[1;32m[mnemo] install complete.\033[0m
+printf "\n\033[1;32m[mnemo] install complete.\033[0m\n"
+cat <<'EOF'
 Try it:
   ./.venv/bin/python -m mnemo.cli build --source "/path/to/your/docs"
   ./.venv/bin/python -m mnemo.cli overview

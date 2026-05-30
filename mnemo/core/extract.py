@@ -222,8 +222,16 @@ def extract_project(
             all_relations.extend(res["relations"])
             all_facts.extend(res["facts"])
             n_chunks += 1
+        # Checkpoint after each document: long builds become resumable/inspectable,
+        # and an interruption never loses completed work.
+        store.write_json(proj / "extractions.json", {
+            "entities": all_entities, "relations": all_relations, "facts": all_facts,
+            "stats": {"docs_done": fi + 1, "docs": len(md_files), "chunks": n_chunks,
+                      "raw_entities": len(all_entities), "raw_relations": len(all_relations),
+                      "raw_facts": len(all_facts)},
+        })
         if progress:
-            progress(fi + 1, len(md_files), rel)
+            progress(fi + 1, len(md_files), f"{rel}  ({len(chunks)} chunks)")
 
     raw = {
         "entities": all_entities,
