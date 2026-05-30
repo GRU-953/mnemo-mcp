@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Local, token-free, graph-based project memory for Claude.",
-    "version": "0.6.0",
+    "version": "0.7.0",
     "pluginRoot": "."
   },
   "plugins": [
@@ -13,7 +13,7 @@
       "name": "mnemo",
       "source": "./",
       "description": "Build a knowledge graph + interactive mind map from your documents using local models (Ollama, Tesseract, MarkItDown). Near-zero Claude tokens to create or use; reusable across projects.",
-      "version": "0.6.0",
+      "version": "0.7.0",
       "keywords": ["memory", "knowledge-graph", "mind-map", "local-llm", "ollama", "token-efficient", "mcp"]
     }
   ]

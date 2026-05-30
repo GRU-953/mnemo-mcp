@@ -55,7 +55,11 @@ def _schema_hint() -> str:
         '}\n'
         f"HARD LIMITS: at most {me} entities (the most important only), at most "
         f"{me} relations, at most {mf} facts. Descriptions <=12 words; facts <=22 words. "
-        "Only relations where both endpoints are entities. Never repeat. Never invent."
+        "Only relations where both endpoints are entities. Never repeat. Never invent.\n"
+        "NAMES: entity names are short proper noun phrases (e.g. 'ADEX Group', "
+        "'ISO 9001'), NEVER sentences or image descriptions. "
+        "TYPES: a year or year-range -> Milestone; a number/percentage/measurement "
+        "-> Metric; a named standard/law/policy -> Policy; a person -> Person."
     )
 
 

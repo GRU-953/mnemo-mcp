@@ -5,4 +5,4 @@ visualization) runs locally via MarkItDown + Tesseract + Ollama. Claude only
 ever sees compact metadata or a small, relevant subgraph — never raw documents.
 """
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
