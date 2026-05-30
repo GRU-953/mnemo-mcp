@@ -96,6 +96,10 @@ def query(query_text: str, *, project_id: str | None = None, k: int | None = Non
         vecs, items = _load_index(pid)
         if vecs is None or items is None:
             continue
+        # Skip indexes whose embedding dimension differs from the query's (e.g. a
+        # project built with a different embed model) instead of crashing on matmul.
+        if getattr(vecs, "ndim", 0) != 2 or vecs.shape[1] != q.shape[0]:
+            continue
         sims = vecs @ q
         order = np.argsort(-sims)[: max(k * 3, 20)]
         for i in order:

@@ -374,6 +374,79 @@ def test_store_roundtrip():
     os.unlink(path)
 
 
+def test_num_ctx_adaptive():
+    import os
+    from mnemo.core import extract as ex, platform_tuning as pt
+    ex._NUM_CTX = None
+    os.environ["MNEMO_NUM_CTX"] = "5000"
+    try:
+        assert ex._num_ctx() == 5000
+    finally:
+        del os.environ["MNEMO_NUM_CTX"]
+        ex._NUM_CTX = None
+    assert ex._num_ctx() == pt.recommended_num_ctx(pt.hardware_info().get("ram_gb"))
+    ex._NUM_CTX = None  # reset so production default re-resolves
+
+
+def test_project_stats():
+    proj = "stats-proj"
+    store.ensure_project(proj)
+    store.save_meta(proj, {"name": "Stats", "source_dir": "/x", "files_ingested": 3})
+    store.save_graph(proj, {
+        "nodes": [{"id": "a", "name": "Acme", "type": "Organization", "degree": 3, "mentions": 5},
+                  {"id": "b", "name": "Policy X", "type": "Policy", "degree": 1, "mentions": 2}],
+        "edges": [{"source": "a", "target": "b", "relation": "has"}],
+        "facts": [{"text": "f", "nodes": ["a"]}]})
+    s = store.project_stats(proj)
+    assert s["nodes"] == 2 and s["edges"] == 1 and s["facts"] == 1
+    assert s["entities_by_type"]["Organization"] == 1
+    assert s["top_entities"][0]["name"] == "Acme"
+
+
+def test_full_pipeline_mocked():
+    """End-to-end ingest→extract→graph→digest→index→query with the LLM and
+    document-conversion mocked (no Ollama / MarkItDown needed)."""
+    import json as _json
+    import os
+    import tempfile
+    from mnemo.core import pipeline, ingest, index
+    from mnemo.core import ollama_client as oll
+
+    src = tempfile.mkdtemp(prefix="mnemo-itest-")
+    with open(os.path.join(src, "doc1.txt"), "w") as f:
+        f.write("Acme Corp makes Widget X. ISO 9001 certified.")
+    with open(os.path.join(src, "doc2.txt"), "w") as f:
+        f.write("Jane Doe leads Acme. Widget X is the flagship.")
+
+    saved = (ingest.convert_file, oll.generate, oll.embed, oll.ping, oll.has_model)
+
+    def fake_gen(prompt, **k):
+        if "DOCUMENT CHUNK" in prompt:  # extraction
+            return _json.dumps({
+                "entities": [{"name": "Acme Corp", "type": "Organization", "description": "maker", "aliases": ["Acme"]},
+                             {"name": "Widget X", "type": "Product", "description": "flagship", "aliases": []}],
+                "relations": [{"source": "Acme Corp", "relation": "makes", "target": "Widget X"}],
+                "facts": [{"text": "Acme Corp makes Widget X.", "entities": ["Acme Corp", "Widget X"]}]})
+        return "Acme Corp makes Widget X, its flagship product."  # overview
+
+    ingest.convert_file = lambda p, **o: {"markdown": open(p).read(), "method": "mock", "chars": 40}
+    oll.generate = fake_gen
+    oll.embed = lambda texts, **k: [[float(len(t) % 7), float(len(t) % 5), 1.0] for t in texts]
+    oll.ping = lambda timeout=2.0: True
+    oll.has_model = lambda name: True
+    try:
+        res = pipeline.build_memory(src, "itest-proj", reset=True, llm_overview=True)
+        g = store.load_graph("itest-proj")
+        assert res["project"] == "itest-proj"
+        assert len(g["nodes"]) >= 2, g
+        assert store.memory_md_path("itest-proj").exists()
+        assert store.mindmap_path("itest-proj").exists()
+        q = index.query("widget flagship", project_id="itest-proj", k=3)
+        assert "nodes" in q
+    finally:
+        (ingest.convert_file, oll.generate, oll.embed, oll.ping, oll.has_model) = saved
+
+
 def _run_all():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     passed = 0

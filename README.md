@@ -113,9 +113,11 @@ Once installed as a Claude Code plugin, Claude can call these tools (and the
 | `memory_overview(project?)` | Compact digest — load at session start. |
 | `memory_query(query, project?, k?, scope?)` | Semantic recall → tiny relevant subgraph. |
 | `memory_expand(entity, project?, depth?)` | One entity's neighborhood. |
+| `memory_stats(project?)` | Graph analytics — counts, entities by type, most-central entities. |
+| `memory_link(into, from, query?)` | Import another project's entities/facts (reuse). |
 | `memory_list_projects()` | All projects + counts. |
 | `memory_open_mindmap(project?)` | Open the interactive graph. |
-| `memory_status()` | Stack health. |
+| `memory_status()` | Stack health + hardware/tuning. |
 | `memory_self_update()` | Update the plugin to the latest GitHub release. |
 
 ### Install the plugin

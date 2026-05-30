@@ -122,6 +122,32 @@ def list_projects() -> list[dict]:
     return out
 
 
+def project_stats(project_id: str) -> dict:
+    """Compact analytics for a project's graph (counts, type breakdown, top entities)."""
+    from collections import Counter
+    g = load_graph(project_id)
+    nodes = g.get("nodes", [])
+    edges = g.get("edges", [])
+    facts = g.get("facts", [])
+    meta = load_meta(project_id)
+    by_type = Counter(n.get("type", "?") for n in nodes)
+    ranked = sorted(nodes, key=lambda n: -(n.get("degree", 0) * 2 + n.get("mentions", 0)))
+    return {
+        "project": project_id,
+        "name": meta.get("name", project_id),
+        "source_dir": meta.get("source_dir"),
+        "updated": meta.get("updated"),
+        "files_ingested": meta.get("files_ingested"),
+        "nodes": len(nodes),
+        "edges": len(edges),
+        "facts": len(facts),
+        "entities_by_type": dict(by_type.most_common()),
+        "top_entities": [{"name": n["name"], "type": n.get("type"),
+                          "degree": n.get("degree", 0), "mentions": n.get("mentions", 0)}
+                         for n in ranked[:12]],
+    }
+
+
 # ── Hashing / time ────────────────────────────────────────────────────────
 def file_hash(path: str | Path) -> str:
     h = hashlib.sha256()

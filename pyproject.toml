@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mnemo-mcp"
-version = "0.3.1"
+version = "0.4.0"
 description = "Local, token-free, graph-based project memory for Claude (MCP plugin)."
 readme = "README.md"
 license = { text = "MIT" }
@@ -13,7 +13,7 @@ authors = [{ name = "GRU-953" }]
 keywords = ["memory", "knowledge-graph", "mind-map", "local-llm", "ollama", "mcp", "rag"]
 dependencies = [
   "mcp>=1.8.0",
-  "markitdown[pdf,docx,pptx,xlsx,xls]>=0.1.1,<0.3.1",
+  "markitdown[pdf,docx,pptx,xlsx,xls]>=0.1.1,<0.4.0",
   "pypdfium2>=4.0.0",
   "Pillow>=10.0.0",
   "requests>=2.31.0",
