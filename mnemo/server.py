@@ -154,6 +154,17 @@ def memory_open_mindmap(project: str = "") -> str:
     return f"Opened mind map: {p}"
 
 
+@mcp.tool()
+def memory_link(into_project: str, from_project: str, query: str = "", k: int = 20) -> str:
+    """Reuse memory across projects: import the most relevant (or, with no query,
+    the most central) entities + facts from `from_project` into `into_project`, so
+    the target project's memory can answer questions about the source. Imported
+    nodes are tagged with their origin. Token-free. (Tip: `memory_query(scope="all")`
+    already searches across all projects without importing.)"""
+    from .core import reuse
+    return json.dumps(reuse.link_projects(into_project, from_project, query=query or None, k=k), indent=2)
+
+
 def main() -> None:
     mcp.run()
 

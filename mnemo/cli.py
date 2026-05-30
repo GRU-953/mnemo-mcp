@@ -110,6 +110,13 @@ def cmd_list(a: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_link(a: argparse.Namespace) -> int:
+    from .core import reuse
+    res = reuse.link_projects(a.into, a.from_project, query=a.query or None, k=a.k)
+    print(json.dumps(res, indent=2))
+    return 0
+
+
 def cmd_mindmap(a: argparse.Namespace) -> int:
     import subprocess
     project = _resolve_project(a.project)
@@ -171,6 +178,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     sp = sub.add_parser("list", help="list projects in the store")
     sp.set_defaults(func=cmd_list)
+
+    sp = sub.add_parser("link", help="import entities/facts from one project into another")
+    sp.add_argument("--into", required=True, help="target project id")
+    sp.add_argument("--from", dest="from_project", required=True, help="source project id")
+    sp.add_argument("--query", default="", help="import nodes relevant to this query (else most central)")
+    sp.add_argument("-k", type=int, default=20)
+    sp.set_defaults(func=cmd_link)
 
     sp = sub.add_parser("mindmap", help="open the HTML mind map")
     sp.add_argument("--project")

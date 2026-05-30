@@ -40,7 +40,7 @@ CHUNK_WORDS = int(os.environ.get("MNEMO_CHUNK_WORDS", "1400"))
 CHUNK_OVERLAP_WORDS = int(os.environ.get("MNEMO_CHUNK_OVERLAP", "100"))
 EXTRACT_TEMPERATURE = float(os.environ.get("MNEMO_EXTRACT_TEMP", "0.0"))
 EXTRACT_NUM_CTX = int(os.environ.get("MNEMO_NUM_CTX", "8192"))
-MAX_CHUNKS_PER_DOC = int(os.environ.get("MNEMO_MAX_CHUNKS_PER_DOC", "14"))
+MAX_CHUNKS_PER_DOC = int(os.environ.get("MNEMO_MAX_CHUNKS_PER_DOC", "8"))
 # Per-chunk output caps — keeping output small is the #1 speed lever for local LLMs.
 MAX_ENTITIES_PER_CHUNK = int(os.environ.get("MNEMO_MAX_ENT_CHUNK", "10"))
 MAX_FACTS_PER_CHUNK = int(os.environ.get("MNEMO_MAX_FACT_CHUNK", "5"))
