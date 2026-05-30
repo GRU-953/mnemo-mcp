@@ -31,6 +31,16 @@ an **interactive HTML mind map** — and it is **reusable across projects**.
    nomic-embed-text vectors ──► memory_query returns only a tiny relevant slice (not documents)
 ```
 
+## Contents
+
+[Why it saves tokens](#why-it-saves-tokens) · [What you get](#what-you-get) ·
+[Install](#install) · [CLI](#use-it-from-the-command-line) ·
+[Claude / MCP tools](#use-it-from-claude-mcp-plugin) ·
+[Reuse across projects](#reusable-across-projects) · [Configuration](#configuration-environment-variables) ·
+[Privacy](#privacy) · [Resumable builds](#robust-resumable-builds) ·
+[Staying up to date](#staying-up-to-date) · [Apple-silicon optimization](#apple-silicon-optimization) ·
+[How it works](#how-it-works-pipeline)
+
 ## Why it saves tokens
 
 | | Traditional "read the files into context" | Mnemo |
