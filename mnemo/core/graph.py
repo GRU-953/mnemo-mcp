@@ -77,9 +77,14 @@ def build_graph(project_id: str, *, embed: bool = True,
             n["sources"][src["file"]] += 1
         return k
 
+    # Junk entities that can leak from provenance markers / OCR artifacts.
+    junk = {"mnemo source", "mnemo method", "page", "source", "method", "chunk", "image", "ocr text"}
     if progress:
         progress(f"resolving {len(ents)} raw entities")
     for e in ents:
+        nm = _norm(e.get("name"))
+        if not nm or nm in junk or nm.startswith("mnemo"):
+            continue
         k = touch(e.get("name"), e.get("type"), e.get("description", ""), e.get("source"))
         if not k:
             continue
