@@ -120,6 +120,17 @@ def cmd_stats(a: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_export(a: argparse.Namespace) -> int:
+    project = _resolve_project(a.project)
+    if not project:
+        print("Specify --project", file=sys.stderr)
+        return 1
+    res = store.export_memory(project, a.to, include_graph=a.graph,
+                              include_mindmap=a.mindmap, as_claude_md=a.claude_md)
+    print(json.dumps(res, indent=2))
+    return 0
+
+
 def cmd_link(a: argparse.Namespace) -> int:
     from .core import reuse
     res = reuse.link_projects(a.into, a.from_project, query=a.query or None, k=a.k)
@@ -207,6 +218,14 @@ def build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("stats", help="graph analytics for a project")
     sp.add_argument("--project")
     sp.set_defaults(func=cmd_stats)
+
+    sp = sub.add_parser("export", help="export memory files for use in other chats/projects")
+    sp.add_argument("--project")
+    sp.add_argument("--to", required=True, help="destination folder")
+    sp.add_argument("--graph", action="store_true", help="also export graph.json")
+    sp.add_argument("--mindmap", action="store_true", help="also export mindmap.html")
+    sp.add_argument("--claude-md", dest="claude_md", action="store_true", help="name the file CLAUDE.md")
+    sp.set_defaults(func=cmd_export)
 
     sp = sub.add_parser("link", help="import entities/facts from one project into another")
     sp.add_argument("--into", required=True, help="target project id")

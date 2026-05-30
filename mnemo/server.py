@@ -145,6 +145,20 @@ def memory_stats(project: str = "") -> str:
 
 
 @mcp.tool()
+def memory_export(dest_dir: str, project: str = "", include_graph: bool = False,
+                  include_mindmap: bool = False, as_claude_md: bool = False) -> str:
+    """Export a project's memory to a folder so it's reusable in any other chat or
+    project — e.g. add the file to a Claude Desktop project's knowledge, or save it
+    as a repo's CLAUDE.md. Copies memory.md (+ optionally graph.json / mindmap.html;
+    set as_claude_md to name it CLAUDE.md). Returns the written paths."""
+    pid = _resolve(project)
+    if not pid:
+        return _need_project()
+    return json.dumps(store.export_memory(pid, dest_dir, include_graph=include_graph,
+                                          include_mindmap=include_mindmap, as_claude_md=as_claude_md), indent=2)
+
+
+@mcp.tool()
 def memory_list_projects() -> str:
     """List every project in the global memory store with entity/edge counts and
     source folders. Memory persists across sessions and is reusable across projects."""

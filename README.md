@@ -97,6 +97,8 @@ Add `--with-audio` to also enable audio/video transcription (faster-whisper).
 ./.venv/bin/python -m mnemo.cli query "data governance" --scope all   # across all projects
 ./.venv/bin/python -m mnemo.cli expand "ADEX Group"
 ./.venv/bin/python -m mnemo.cli mindmap                      # open the HTML graph
+./.venv/bin/python -m mnemo.cli stats                        # graph analytics
+./.venv/bin/python -m mnemo.cli export --to ~/my-project --claude-md   # reuse as CLAUDE.md
 ./.venv/bin/python -m mnemo.cli check-update                 # is a newer release out?
 ./.venv/bin/python -m mnemo.cli self-update                  # fast-forward to the latest release
 ```
@@ -114,6 +116,7 @@ Once installed as a Claude Code plugin, Claude can call these tools (and the
 | `memory_query(query, project?, k?, scope?)` | Semantic recall → tiny relevant subgraph. |
 | `memory_expand(entity, project?, depth?)` | One entity's neighborhood. |
 | `memory_stats(project?)` | Graph analytics — counts, entities by type, most-central entities. |
+| `memory_export(dest_dir, project?, …)` | Export memory (optionally as `CLAUDE.md`) for use in other chats/projects. |
 | `memory_link(into, from, query?)` | Import another project's entities/facts (reuse). |
 | `memory_list_projects()` | All projects + counts. |
 | `memory_open_mindmap(project?)` | Open the interactive graph. |
