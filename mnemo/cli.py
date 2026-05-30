@@ -20,7 +20,7 @@ import json
 import sys
 
 from . import __version__
-from .core import pipeline, store, index
+from .core import pipeline, store, index, updater
 
 
 def _progress(stage: str, msg: str) -> None:
@@ -118,6 +118,20 @@ def cmd_link(a: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_check_update(a: argparse.Namespace) -> int:
+    print(json.dumps(updater.check_update(), indent=2))
+    return 0
+
+
+def cmd_self_update(a: argparse.Namespace) -> int:
+    info = updater.check_update()
+    if not info.get("available") and not a.force:
+        print(json.dumps({"updated": False, **info}, indent=2))
+        return 0
+    print(json.dumps(updater.self_update(), indent=2))
+    return 0
+
+
 def cmd_mindmap(a: argparse.Namespace) -> int:
     import subprocess
     project = _resolve_project(a.project)
@@ -187,6 +201,13 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--query", default="", help="import nodes relevant to this query (else most central)")
     sp.add_argument("-k", type=int, default=20)
     sp.set_defaults(func=cmd_link)
+
+    sp = sub.add_parser("check-update", help="check GitHub for a newer release")
+    sp.set_defaults(func=cmd_check_update)
+
+    sp = sub.add_parser("self-update", help="fast-forward the plugin to the latest GitHub release")
+    sp.add_argument("--force", action="store_true", help="pull latest main even if no newer release tag")
+    sp.set_defaults(func=cmd_self_update)
 
     sp = sub.add_parser("mindmap", help="open the HTML mind map")
     sp.add_argument("--project")

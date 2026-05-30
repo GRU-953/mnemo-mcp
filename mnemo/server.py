@@ -13,7 +13,7 @@ import subprocess
 
 from mcp.server.fastmcp import FastMCP
 
-from .core import pipeline, store, index
+from .core import pipeline, store, index, updater
 
 mcp = FastMCP("mnemo")
 
@@ -165,7 +165,24 @@ def memory_link(into_project: str, from_project: str, query: str = "", k: int = 
     return json.dumps(reuse.link_projects(into_project, from_project, query=query or None, k=k), indent=2)
 
 
+@mcp.tool()
+def memory_self_update() -> str:
+    """Update the Mnemo plugin to the latest GitHub release (fast-forward git pull
+    of the plugin checkout, then reinstall). Safe: never discards local changes.
+    Returns whether an update was applied and the new version. Restart the session
+    to load updated code."""
+    info = updater.check_update()
+    if not info.get("available"):
+        return json.dumps({"updated": False, **info}, indent=2)
+    return json.dumps(updater.self_update(), indent=2)
+
+
 def main() -> None:
+    # Best-effort, non-blocking: keep the plugin on the latest release.
+    try:
+        updater.auto_update_on_start()
+    except Exception:
+        pass
     mcp.run()
 
 
