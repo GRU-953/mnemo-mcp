@@ -45,6 +45,10 @@ def chunk_markdown(text: str, words: int | None = None, overlap: int | None = No
     words = words or config.CHUNK_WORDS
     overlap = overlap or config.CHUNK_OVERLAP_WORDS
 
+    # Strip HTML comments (mnemo provenance markers, OCR page markers) so they
+    # never pollute extraction with junk entities like "mnemo-source".
+    text = re.sub(r"<!--.*?-->", " ", text, flags=re.S)
+
     # Group lines into blocks, starting a new block at markdown headings.
     blocks: list[str] = []
     cur: list[str] = []
@@ -185,6 +189,7 @@ def extract_project(
     project_id: str,
     *,
     model: str | None = None,
+    resume: bool = True,
     progress: Callable[[int, int, str], None] | None = None,
 ) -> dict:
     model = model or config.EXTRACT_MODEL
@@ -193,15 +198,23 @@ def extract_project(
 
     import hashlib
 
-    all_entities: list[dict] = []
-    all_relations: list[dict] = []
-    all_facts: list[dict] = []
-    n_chunks = 0
+    # Resume: reload prior accumulations + the set of already-extracted files, so an
+    # interrupted long build continues from where it stopped instead of restarting.
+    prior = store.read_json(proj / "extractions.json", {}) if resume else {}
+    all_entities: list[dict] = list(prior.get("entities", []) or [])
+    all_relations: list[dict] = list(prior.get("relations", []) or [])
+    all_facts: list[dict] = list(prior.get("facts", []) or [])
+    done_files: set[str] = set(prior.get("done_files", []) or [])
+    n_chunks = int((prior.get("stats") or {}).get("chunks", 0) or 0)
     seen_hashes: dict[str, str] = {}
     skipped_dups: list[str] = []
 
     for fi, mdf in enumerate(md_files):
         rel = str(mdf.relative_to(proj / "sources"))
+        if rel in done_files:
+            if progress:
+                progress(fi + 1, len(md_files), f"{rel} (already done)")
+            continue
         text = mdf.read_text(encoding="utf-8", errors="replace")
         # De-duplicate identical content (corpus has docx/pdf pairs & exact copies).
         body = re.sub(r"<!--\s*mnemo-.*?-->", "", text)
@@ -222,11 +235,13 @@ def extract_project(
             all_relations.extend(res["relations"])
             all_facts.extend(res["facts"])
             n_chunks += 1
+        done_files.add(rel)
         # Checkpoint after each document: long builds become resumable/inspectable,
         # and an interruption never loses completed work.
         store.write_json(proj / "extractions.json", {
             "entities": all_entities, "relations": all_relations, "facts": all_facts,
-            "stats": {"docs_done": fi + 1, "docs": len(md_files), "chunks": n_chunks,
+            "done_files": sorted(done_files),
+            "stats": {"docs_done": len(done_files), "docs": len(md_files), "chunks": n_chunks,
                       "raw_entities": len(all_entities), "raw_relations": len(all_relations),
                       "raw_facts": len(all_facts)},
         })
@@ -237,6 +252,7 @@ def extract_project(
         "entities": all_entities,
         "relations": all_relations,
         "facts": all_facts,
+        "done_files": sorted(done_files),
         "stats": {"docs": len(md_files), "duplicates_skipped": len(skipped_dups),
                   "chunks": n_chunks, "raw_entities": len(all_entities),
                   "raw_relations": len(all_relations), "raw_facts": len(all_facts)},
