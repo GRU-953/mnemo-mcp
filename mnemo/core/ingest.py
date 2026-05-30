@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Callable
 
@@ -253,12 +254,22 @@ def iter_source_files(source_dir: str | Path) -> list[Path]:
     return files
 
 
+def _default_workers() -> int:
+    """Auto-size the ingestion pool to the machine. Conversion is CPU/IO-bound
+    (MarkItDown parse, Tesseract subprocess, PDF render), which threads parallelize
+    well across Apple-silicon cores; capped to avoid oversubscription."""
+    if config.INGEST_WORKERS and config.INGEST_WORKERS > 0:
+        return config.INGEST_WORKERS
+    return max(2, min(8, (os.cpu_count() or 4)))
+
+
 def ingest_dir(
     source_dir: str | Path,
     project_id: str,
     *,
     incremental: bool = True,
     max_files: int | None = None,
+    workers: int | None = None,
     progress: Callable[[int, int, str, str], None] | None = None,
     **opts: Any,
 ) -> dict:
@@ -270,12 +281,15 @@ def ingest_dir(
     files = iter_source_files(src)
     if max_files:
         files = files[:max_files]
+    total = len(files)
 
     results: list[dict] = []
-    converted = cached = empty = 0
+    counts = {"converted": 0, "cached": 0, "empty": 0, "done": 0}
     new_manifest: dict[str, Any] = {}
 
-    for i, f in enumerate(files):
+    # Partition into already-cached vs needs-conversion (hashing is cheap, serial).
+    to_convert: list[tuple] = []
+    for f in files:
         rel = f.relative_to(src)
         try:
             h = store.file_hash(f)
@@ -283,38 +297,60 @@ def ingest_dir(
             h = None
         out_md = (sources_root / rel)
         out_md = out_md.with_suffix(out_md.suffix + ".md")
-
         prev = manifest.get(str(rel))
         if incremental and prev and prev.get("hash") == h and out_md.exists():
             new_manifest[str(rel)] = prev
-            cached += 1
+            counts["cached"] += 1
+            counts["done"] += 1
             results.append({"file": str(rel), "status": "cached", "chars": prev.get("chars", 0)})
             if progress:
-                progress(i + 1, len(files), str(rel), "cached")
-            continue
+                progress(counts["done"], total, str(rel), "cached")
+        else:
+            to_convert.append((f, rel, h, out_md))
 
-        res = convert_file(f, **opts)
+    def _convert(task: tuple) -> tuple:
+        f, rel, h, out_md = task
+        try:
+            res = convert_file(f, **opts)
+        except Exception:
+            res = {"markdown": "", "method": "error", "chars": 0}
+        return (f, rel, h, out_md, res)
+
+    def _record(f: Path, rel, h, out_md, res: dict) -> None:
         if res["chars"] > 0:
             store.write_text(out_md, _front_matter(f, src, res) + res["markdown"])
-            converted += 1
+            counts["converted"] += 1
             status = "converted"
         else:
-            empty += 1
+            counts["empty"] += 1
             status = "empty"
         new_manifest[str(rel)] = {
             "hash": h, "chars": res["chars"], "method": res["method"],
             "md": str(out_md.relative_to(proj)) if res["chars"] > 0 else None,
         }
         results.append({"file": str(rel), "status": status, "chars": res["chars"], "method": res["method"]})
+        counts["done"] += 1
         if progress:
-            progress(i + 1, len(files), str(rel), status)
+            progress(counts["done"], total, str(rel), status)
+
+    nworkers = workers or _default_workers()
+    if nworkers > 1 and len(to_convert) > 1:
+        # convert_file runs in worker threads; all writes/progress happen on the
+        # main thread as futures complete, so shared state stays thread-safe.
+        with ThreadPoolExecutor(max_workers=nworkers) as ex:
+            for fut in as_completed([ex.submit(_convert, t) for t in to_convert]):
+                _record(*fut.result())
+    else:
+        for t in to_convert:
+            _record(*_convert(t))
 
     store.write_json(store.manifest_path(project_id), new_manifest)
     return {
-        "total": len(files),
-        "converted": converted,
-        "cached": cached,
-        "empty_or_failed": empty,
+        "total": total,
+        "converted": counts["converted"],
+        "cached": counts["cached"],
+        "empty_or_failed": counts["empty"],
+        "workers": nworkers,
         "sources_dir": str(sources_root),
         "files": results,
     }

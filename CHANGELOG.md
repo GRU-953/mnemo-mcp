@@ -3,6 +3,17 @@
 All notable changes to **Mnemo** are documented here. Versioning is semver-ish
 during 0.x.
 
+## [0.2.0] — Apple-silicon optimization
+### Added
+- **Parallel ingestion** across CPU cores (auto-sized worker pool) — much faster
+  document conversion / OCR on multi-core Macs.
+- **Ollama Metal/memory tuning** applied by `install.sh`: `OLLAMA_FLASH_ATTENTION`,
+  `OLLAMA_KV_CACHE_TYPE=q8_0` (~halves context-cache memory), `OLLAMA_MAX_LOADED_MODELS=1`
+  (keeps the 7B model resident on 16 GB and prevents extract/embed/vision model
+  thrashing), `OLLAMA_NUM_PARALLEL=1`.
+- **Hardware auto-detection**: `mnemo status` now reports chip, performance/efficiency
+  cores, RAM, the Metal GPU, ingest worker count, and recommended Ollama tuning.
+
 ## [0.1.8]
 ### Added
 - Format-variant de-duplication: documents sharing a name stem in different

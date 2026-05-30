@@ -151,6 +151,19 @@ hiccups), just re-run `memory_build` / `memory_update` for the same project — 
 **resumes** from where it stopped instead of restarting, and never marks a document
 "done" if its extraction errored. This keeps large corpora practical on a laptop.
 
+## Apple-silicon optimization
+
+Mnemo is tuned for Apple M-series (and any multi-core machine):
+
+- **CPU** — ingestion (MarkItDown parsing, Tesseract OCR, PDF rendering) runs on an
+  auto-sized worker pool across all cores, not one at a time.
+- **GPU** — `qwen2.5:7b`, `nomic-embed-text`, and `moondream` run on the **Metal
+  GPU** via Ollama; `install.sh` enables **flash attention** for faster attention.
+- **Unified memory** — a **q8_0 KV cache** roughly halves the context-cache memory,
+  and **single-model loading** keeps the 7B model resident on a 16 GB Mac without
+  swap thrash (and prevents the extract/embed/vision models from evicting each
+  other). `mnemo status` reports your chip, cores, RAM, and the active tuning.
+
 ## How it works (pipeline)
 
 1. **Ingest** — `MarkItDown` converts each file; images and scanned PDFs are OCR'd

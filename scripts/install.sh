@@ -41,16 +41,29 @@ else
   say "Tesseract present: $(tesseract --version 2>&1 | head -1)"
 fi
 
-# ── 3. Ollama (local LLM server) ──────────────────────────────────────────
+# ── 3. Ollama (local LLM server) + Apple-silicon / memory tuning ──────────
 if ! command -v ollama >/dev/null 2>&1; then
   say "installing Ollama…"
   brew install ollama || { warn "ollama install failed"; }
 fi
-if ! curl -sf http://localhost:11434/api/version >/dev/null 2>&1; then
-  say "starting Ollama…"
-  brew services start ollama >/dev/null 2>&1 || (nohup ollama serve >/tmp/ollama-serve.log 2>&1 & disown)
-  for i in $(seq 1 60); do curl -sf http://localhost:11434/api/version >/dev/null 2>&1 && break; sleep 1; done
+
+# Tuning read by the Ollama server: faster Metal attention, half-size KV cache
+# (keeps things resident on 8–16 GB), single model loaded at a time.
+export OLLAMA_FLASH_ATTENTION=1 OLLAMA_KV_CACHE_TYPE=q8_0 OLLAMA_MAX_LOADED_MODELS=1 OLLAMA_NUM_PARALLEL=1
+if command -v launchctl >/dev/null 2>&1; then
+  for kv in OLLAMA_FLASH_ATTENTION=1 OLLAMA_KV_CACHE_TYPE=q8_0 OLLAMA_MAX_LOADED_MODELS=1 OLLAMA_NUM_PARALLEL=1; do
+    launchctl setenv "${kv%%=*}" "${kv#*=}" 2>/dev/null || true
+  done
 fi
+
+say "starting Ollama (with Metal/memory tuning)…"
+# Restart so the tuning applies even if Ollama was already running untuned.
+brew services restart ollama >/dev/null 2>&1 || {
+  pkill -x ollama 2>/dev/null || true
+  nohup env OLLAMA_FLASH_ATTENTION=1 OLLAMA_KV_CACHE_TYPE=q8_0 OLLAMA_MAX_LOADED_MODELS=1 \
+    OLLAMA_NUM_PARALLEL=1 ollama serve >/tmp/ollama-serve.log 2>&1 & disown
+}
+for i in $(seq 1 60); do curl -sf http://localhost:11434/api/version >/dev/null 2>&1 && break; sleep 1; done
 curl -sf http://localhost:11434/api/version >/dev/null 2>&1 && say "Ollama up: $(curl -s http://localhost:11434/api/version)" || warn "Ollama not reachable"
 
 # ── 4. Models ─────────────────────────────────────────────────────────────
