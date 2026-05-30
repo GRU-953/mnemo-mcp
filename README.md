@@ -1,5 +1,8 @@
 # 🧠 Mnemo — local, token-free, graph-based project memory for Claude
 
+[![CI](https://github.com/GRU-953/mnemo-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/GRU-953/mnemo-mcp/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Mnemo gives Claude durable **project memory** that is **created and queried almost
 entirely by local, free, open-source models** — so it costs *near-zero Claude
 tokens* to build *or* use. It turns a messy folder of documents (PDF, DOCX, PPTX,
