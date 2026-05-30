@@ -56,14 +56,16 @@ if command -v launchctl >/dev/null 2>&1; then
   done
 fi
 
-say "starting Ollama (with Metal/memory tuning)…"
-# Restart so the tuning applies even if Ollama was already running untuned.
-brew services restart ollama >/dev/null 2>&1 || {
-  pkill -x ollama 2>/dev/null || true
-  nohup env OLLAMA_FLASH_ATTENTION=1 OLLAMA_KV_CACHE_TYPE=q8_0 OLLAMA_MAX_LOADED_MODELS=1 \
-    OLLAMA_NUM_PARALLEL=1 ollama serve >/tmp/ollama-serve.log 2>&1 & disown
-}
-for i in $(seq 1 60); do curl -sf http://localhost:11434/api/version >/dev/null 2>&1 && break; sleep 1; done
+# Fully on-demand: disable the always-on service so Ollama runs only during tasks.
+# Mnemo starts it when a task begins and stops it after MNEMO_OLLAMA_IDLE of inactivity.
+brew services stop ollama >/dev/null 2>&1 || true
+MNEMO_STARTED_OLLAMA=0
+if ! curl -sf http://localhost:11434/api/version >/dev/null 2>&1; then
+  say "starting Ollama temporarily for setup (Metal/memory tuning)…"
+  nohup ollama serve >/tmp/ollama-setup.log 2>&1 & disown
+  MNEMO_STARTED_OLLAMA=1
+  for i in $(seq 1 60); do curl -sf http://localhost:11434/api/version >/dev/null 2>&1 && break; sleep 1; done
+fi
 curl -sf http://localhost:11434/api/version >/dev/null 2>&1 && say "Ollama up: $(curl -s http://localhost:11434/api/version)" || warn "Ollama not reachable"
 
 # ── 4. Models ─────────────────────────────────────────────────────────────
@@ -107,6 +109,13 @@ fi
 # ── 7. Health check ───────────────────────────────────────────────────────
 say "verifying…"
 ./.venv/bin/python -m mnemo.cli status || true
+
+# Return Ollama to on-demand: stop the setup server we started. Mnemo will start
+# it again automatically the next time a task needs it, and stop it when idle.
+if [ "$MNEMO_STARTED_OLLAMA" = "1" ]; then
+  say "stopping setup Ollama — it now starts on demand per task…"
+  pkill -x ollama 2>/dev/null || true
+fi
 
 printf "\n\033[1;32m[mnemo] install complete.\033[0m\n"
 cat <<'EOF'

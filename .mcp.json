@@ -10,7 +10,9 @@
         "MNEMO_EXTRACT_MODEL": "qwen2.5:7b",
         "MNEMO_EMBED_MODEL": "nomic-embed-text",
         "MNEMO_VISION_MODEL": "moondream",
-        "MNEMO_OCR_LANG": "eng"
+        "MNEMO_OCR_LANG": "eng",
+        "MNEMO_REPO": "GRU-953/mnemo-mcp",
+        "MNEMO_OLLAMA_IDLE": "300"
       }
     }
   }

@@ -447,6 +447,29 @@ def test_full_pipeline_mocked():
         (ingest.convert_file, oll.generate, oll.embed, oll.ping, oll.has_model) = saved
 
 
+def test_lifecycle_logic():
+    import os
+    from mnemo.core import lifecycle as lc
+    os.environ["MNEMO_OLLAMA_IDLE"] = "120"
+    try:
+        assert lc.idle_timeout() == 120 and lc.keep_alive() == "2m"
+    finally:
+        del os.environ["MNEMO_OLLAMA_IDLE"]
+    assert lc.idle_timeout() == 300 and lc.keep_alive() == "5m"
+    lc.touch_activity()
+    assert lc._last_use().exists()
+    if lc._started_marker().exists():
+        lc._started_marker().unlink()
+    assert lc.stop_ollama()["stopped"] is False  # nothing to stop / not mnemo-started
+    real = lc.is_up
+    lc.is_up = lambda timeout=2.0: True  # already up -> ensure_up must not spawn
+    try:
+        assert lc.ensure_up() is True
+    finally:
+        lc.is_up = real
+    assert {"managed", "up", "idle_timeout_secs", "keep_alive"} <= set(lc.status())
+
+
 def _run_all():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     passed = 0

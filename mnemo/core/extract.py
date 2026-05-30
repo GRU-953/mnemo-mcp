@@ -136,7 +136,7 @@ def extract_chunk(text: str, *, model: str | None = None, source: dict | None = 
             raw = oll.generate(
                 prompt, model=model, system=EXTRACT_SYSTEM, fmt="json",
                 temperature=config.EXTRACT_TEMPERATURE, num_ctx=_num_ctx(),
-                num_predict=1024, keep_alive="30m", timeout=400,
+                num_predict=1024, timeout=400,
             )
             break
         except Exception as e:

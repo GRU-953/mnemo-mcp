@@ -166,6 +166,8 @@ supply-chain risk, so the default only *notifies*.)
 | `MNEMO_OCR_LANG` | `eng` | Tesseract languages, e.g. `eng+ben` |
 | `MNEMO_CHUNK_WORDS` | `1400` | extraction chunk size |
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama endpoint |
+| `MNEMO_OLLAMA_IDLE` | `300` | seconds of inactivity before the on-demand LLM stops |
+| `MNEMO_OLLAMA_LIFECYCLE` | `managed` | `managed` (start/stop on demand) or `off` |
 | `MNEMO_AUTO_UPDATE` | `check` | `check` = notify if a newer release exists · `auto` = fast-forward pull on start · `off` |
 | `MNEMO_REPO` | `GRU-953/mnemo-mcp` | GitHub repo used for updates |
 
@@ -210,6 +212,9 @@ Mnemo is tuned for Apple M-series (and any multi-core machine):
   and **single-model loading** keeps the 7B model resident on a 16 GB Mac without
   swap thrash (and prevents the extract/embed/vision models from evicting each
   other). `mnemo status` reports your chip, cores, RAM, and the active tuning.
+- **On-demand LLM** — Ollama runs **only while a task is active**: Mnemo starts it
+  when you build/query and a watchdog stops it after `MNEMO_OLLAMA_IDLE` (default
+  5 min) of inactivity (only a server Mnemo started). Idle background RAM ≈ 0.
 
 ## How it works (pipeline)
 
