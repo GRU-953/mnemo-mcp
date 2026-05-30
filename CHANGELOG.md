@@ -3,6 +3,16 @@
 All notable changes to **Mnemo** are documented here. Versioning is semver-ish
 during 0.x.
 
+## [0.7.0] — Extraction quality
+### Changed
+- Deterministic entity-type refinement (a year/range -> Milestone, a number/percentage
+  -> Metric) and filtering of sentence-like / vision-caption fragments mistaken for
+  entity names. Sharper extraction prompt: names are short noun phrases; explicit type hints.
+### Fixed
+- Entity-merge was being skipped right after an on-demand Ollama cold start (the
+  `has_model` gate can be empty momentarily), producing under-merged graphs on the
+  first build of a session. Now uses `ensure_up` + an embed retry.
+
 ## [0.6.0] — Portable memory export
 ### Added
 - `memory_export` MCP tool + `mnemo export --to <dir>` — copy a project's memory

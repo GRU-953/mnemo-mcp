@@ -1,6 +1,6 @@
 {
   "name": "mnemo",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Local, token-free, graph-based project memory for Claude. Converts your documents into a knowledge graph + interactive mind map using local models (Ollama, Tesseract, MarkItDown) — near-zero Claude tokens to create or use, and reusable across projects.",
   "author": {
     "name": "GRU-953"

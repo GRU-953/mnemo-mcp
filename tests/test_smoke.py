@@ -489,6 +489,20 @@ def test_export_memory():
     assert os.path.basename(r2["exported"][0]) == f"{proj}-memory.md"
 
 
+def test_type_refinement():
+    from mnemo.core import graph as gr
+    assert gr._refine_type("2026", "Concept") == "Milestone"
+    assert gr._refine_type("2027-2030+", "Concept") == "Milestone"
+    assert gr._refine_type("17.8%", "Concept") == "Metric"
+    assert gr._refine_type("72.0%", "Metric") == "Metric"
+    assert gr._refine_type("ADEX Group", "Organization") == "Organization"
+    assert gr._refine_type("ISO 9001:2015", "Policy") == "Policy"   # not numeric-coerced
+    assert gr._looks_like_sentence("The image shows people on a roof") is True
+    assert gr._looks_like_sentence("a b c d e f g h i j k") is True   # >=10 words
+    assert gr._looks_like_sentence("ADEX Group") is False
+    assert gr._looks_like_sentence("Bangladesh Labour Act 2006") is False
+
+
 def _run_all():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     passed = 0

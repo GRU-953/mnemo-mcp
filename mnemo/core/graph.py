@@ -26,6 +26,33 @@ def _fuzzy(a: str, b: str) -> float:
     return difflib.SequenceMatcher(None, a, b).ratio()
 
 
+_YEAR_RE = re.compile(r"^(19|20)\d{2}(\s*[-–—/to]+\s*((19|20)\d{2}\+?|present|now|\+))?$", re.I)
+_NUMERIC_RE = re.compile(r"^[-+]?\$?\d[\d,\.]*\s*(%|percent|kw|kv|mw|kg|tco2e?|tons?)?\+?$", re.I)
+# Vision-caption / OCR sentence fragments that sometimes surface as "entities".
+_CAPTION_START = ("the image", "this image", "image shows", "the photo", "a photo",
+                  "the picture", "an image", "the diagram shows")
+
+
+def _looks_like_sentence(name: str) -> bool:
+    """Heuristic: real entity names are short noun phrases, not prose. Drop long
+    descriptive fragments (e.g. a vision caption mistaken for an entity)."""
+    n = name.strip()
+    low = n.lower()
+    if low.startswith(_CAPTION_START):
+        return True
+    return len(n.split()) >= 10
+
+
+def _refine_type(name: str, type_: str) -> str:
+    """Deterministically correct common LLM mistypes by name shape."""
+    n = name.strip()
+    if _YEAR_RE.match(n):
+        return "Milestone"
+    if _NUMERIC_RE.match(n):
+        return "Metric"
+    return type_
+
+
 class _UF:
     """Union-find for clustering near-duplicate entities."""
 
@@ -82,8 +109,9 @@ def build_graph(project_id: str, *, embed: bool = True,
     if progress:
         progress(f"resolving {len(ents)} raw entities")
     for e in ents:
-        nm = _norm(e.get("name"))
-        if not nm or nm in junk or nm.startswith("mnemo"):
+        raw_name = e.get("name") or ""
+        nm = _norm(raw_name)
+        if not nm or nm in junk or nm.startswith("mnemo") or _looks_like_sentence(raw_name):
             continue
         k = touch(e.get("name"), e.get("type"), e.get("description", ""), e.get("source"))
         if not k:
@@ -96,8 +124,11 @@ def build_graph(project_id: str, *, embed: bool = True,
 
     # ── Embedding + fuzzy merge of near-duplicate canonical entities ──
     keys = list(canon.keys())
-    if embed and len(keys) > 1 and oll.ping() and oll.has_model(config.EMBED_MODEL):
-        try:
+    if embed and len(keys) > 1:
+        from . import lifecycle
+        lifecycle.ensure_up()  # start the LLM on demand; don't gate on the flaky
+        try:                   # has_model() which can be empty right after a cold start
+            import time as _time
             import numpy as np
             labels = []
             for k in keys:
@@ -105,6 +136,9 @@ def build_graph(project_id: str, *, embed: bool = True,
                 typ = tv.most_common(1)[0][0] if tv else "Concept"
                 labels.append(f"{canon[k]['name']} ({typ})")
             vecs = np.asarray(oll.embed(labels), dtype="float32")
+            if not (vecs.ndim == 2 and vecs.shape[0] == len(keys)):
+                _time.sleep(2.0)  # cold-start: embed model still loading — retry once
+                vecs = np.asarray(oll.embed(labels), dtype="float32")
             if vecs.ndim == 2 and vecs.shape[0] == len(keys):
                 norms = np.linalg.norm(vecs, axis=1, keepdims=True)
                 norms[norms == 0] = 1.0
@@ -156,6 +190,7 @@ def build_graph(project_id: str, *, embed: bool = True,
                 if t != "Concept":
                     typ = t
                     break
+        typ = _refine_type(n["name"], typ)
         desc = n["descs"].most_common(1)[0][0] if n["descs"] else ""
         nid = (config.slugify(n["name"])[:48] or "n")
         base, i = nid, 2
