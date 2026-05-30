@@ -141,6 +141,13 @@ are written only to `~/.claude-memory/`. Nothing is sent to any cloud service, a
 **none of your documents or extracted memory is part of this repository** (the
 store is outside the repo and git-ignored).
 
+## Robust, resumable builds
+
+Extraction checkpoints after every document. If a build is interrupted (or Ollama
+hiccups), just re-run `memory_build` / `memory_update` for the same project — it
+**resumes** from where it stopped instead of restarting, and never marks a document
+"done" if its extraction errored. This keeps large corpora practical on a laptop.
+
 ## How it works (pipeline)
 
 1. **Ingest** — `MarkItDown` converts each file; images and scanned PDFs are OCR'd
