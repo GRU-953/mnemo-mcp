@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "mnemo": {
+      "command": "${CLAUDE_PLUGIN_ROOT}/.venv/bin/python",
+      "args": ["-m", "mnemo.server"],
+      "cwd": "${CLAUDE_PLUGIN_ROOT}",
+      "env": {
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONPATH": "${CLAUDE_PLUGIN_ROOT}",
+        "MNEMO_EXTRACT_MODEL": "qwen2.5:7b",
+        "MNEMO_EMBED_MODEL": "nomic-embed-text",
+        "MNEMO_VISION_MODEL": "moondream",
+        "MNEMO_OCR_LANG": "eng"
+      }
+    }
+  }
+}
