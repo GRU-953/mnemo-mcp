@@ -233,6 +233,25 @@ def test_reuse_link_offline():
     assert res["nodes"], res
 
 
+def test_mindmap_html_injection_safe():
+    """An entity name containing '</script>' must not break out of the data
+    <script> tag in the rendered mind map."""
+    from mnemo.core import graph, render
+    proj = "xss-proj"
+    store.ensure_project(proj)
+    payload = "Evil </script><script>alert(1)</script>"
+    store.write_json(store.project_dir(proj) / "extractions.json", {
+        "entities": [{"name": payload, "type": "Concept", "description": "x", "aliases": [], "source": {"file": "x", "chunk": 0}}],
+        "relations": [], "facts": [],
+    })
+    graph.build_graph(proj, embed=False)
+    render.build_mindmap(proj)
+    html = store.mindmap_path(proj).read_text(encoding="utf-8")
+    assert "window.MNEMO" in html
+    assert "<script>alert(1)</script>" not in html, "payload broke out of the data script!"
+    assert "\\u003c/script\\u003e" in html, "expected escaped </script> in embedded data"
+
+
 def _run_all():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     passed = 0

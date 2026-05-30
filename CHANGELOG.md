@@ -3,6 +3,13 @@
 All notable changes to **Mnemo** are documented here. Versioning is semver-ish
 during 0.x.
 
+## [0.1.6]
+### Fixed
+- Mind map: harden the embedded graph JSON against HTML injection — escape
+  `<`, `>`, `&`, and U+2028/U+2029, and HTML-escape the title — so entity names
+  from arbitrary documents (e.g. containing `</script>`) can't break out of the
+  data `<script>` tag. Added a regression test.
+
 ## [0.1.5]
 ### Added
 - Mind map: a layout switcher (force / concentric / tree / circle / grid) and
