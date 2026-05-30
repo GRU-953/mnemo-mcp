@@ -238,6 +238,11 @@ def extract_project(
 
         chunks = chunk_markdown(text)[: config.MAX_CHUNKS_PER_DOC]
         doc_errored = False
+        # Snapshot accumulator sizes so a document that errors part-way through can
+        # be fully rolled back. Otherwise its successful chunks would be persisted on
+        # the next clean checkpoint and then duplicated when the doc is re-extracted
+        # from chunk 0 on resume (inflating entities/relations/facts and the counter).
+        pre_e, pre_r, pre_f, pre_n = len(all_entities), len(all_relations), len(all_facts), n_chunks
         for ci, ch in enumerate(chunks):
             res = extract_chunk(ch, model=model, source={"file": rel, "chunk": ci})
             if res.get("error"):
@@ -253,9 +258,16 @@ def extract_project(
             all_relations.extend(res["relations"])
             all_facts.extend(res["facts"])
             n_chunks += 1
-        # Only mark a doc done if it extracted without errors, so a transient outage
-        # never silently marks documents complete with empty results.
-        if not doc_errored:
+        if doc_errored:
+            # Roll back this document's partial results so a resume re-extracts it
+            # cleanly with no duplication.
+            del all_entities[pre_e:]
+            del all_relations[pre_r:]
+            del all_facts[pre_f:]
+            n_chunks = pre_n
+        else:
+            # Checkpoint only on clean extraction, so a transient outage never marks
+            # documents complete with empty/partial results.
             done_files.add(rel)
             store.write_json(proj / "extractions.json", {
                 "entities": all_entities, "relations": all_relations, "facts": all_facts,
@@ -265,7 +277,7 @@ def extract_project(
                           "raw_facts": len(all_facts)},
             })
         if progress:
-            tag = " (ERRORED — will retry next run)" if doc_errored else ""
+            tag = " (ERRORED — rolled back, will retry)" if doc_errored else ""
             progress(fi + 1, len(md_files), f"{rel}  ({len(chunks)} chunks){tag}")
 
     raw = {
