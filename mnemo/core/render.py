@@ -3,6 +3,7 @@
 provenance panel. Vendored Cytoscape is inlined so the file works offline."""
 from __future__ import annotations
 
+import html as _html
 import json
 from pathlib import Path
 
@@ -12,6 +13,23 @@ from . import config, store
 def _repo_root() -> Path:
     # mnemo/core/render.py -> mnemo/core -> mnemo -> <repo root>
     return Path(__file__).resolve().parents[2]
+
+
+def _html_safe_json(obj) -> str:
+    """Serialize to JSON safe for embedding inside an HTML <script> tag.
+
+    Entity names/facts come from arbitrary documents and may contain '</script>'
+    or JS line separators; escaping <, >, & and U+2028/U+2029 keeps the data from
+    breaking out of the script (HTML injection) while staying valid JSON/JS.
+    """
+    return (
+        json.dumps(obj, ensure_ascii=False)
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("&", "\\u0026")
+        .replace(" ", "\\u2028")
+        .replace(" ", "\\u2029")
+    )
 
 
 def _cytoscape_tag() -> str:
@@ -62,11 +80,11 @@ def build_mindmap(project_id: str, *, max_nodes: int = 250) -> dict:
     env = Environment(loader=FileSystemLoader(str(_repo_root() / "templates")), autoescape=False)
     tmpl = env.get_template("mindmap.html.j2")
     html = tmpl.render(
-        project_name=meta.get("name", project_id),
+        project_name=_html.escape(str(meta.get("name", project_id))),
         stats_line=f"{len(keep)} of {len(nodes)} entities · {ei} relationships",
-        generated=g.get("generated", ""),
+        generated=_html.escape(str(g.get("generated", ""))),
         cytoscape_tag=_cytoscape_tag(),
-        data_json=json.dumps(data, ensure_ascii=False),
+        data_json=_html_safe_json(data),
     )
     out = store.mindmap_path(project_id)
     store.write_text(out, html)
