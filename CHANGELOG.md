@@ -3,6 +3,11 @@
 All notable changes to **Mnemo** are documented here. Versioning is semver-ish
 during 0.x.
 
+## [0.3.1]
+### Added
+- Expanded test coverage to 20 (pipeline health, empty-graph digest, store round-trip, updater version compare).
+- README table of contents; professional repo description + topics on GitHub.
+
 ## [0.3.0] — Auto-update
 ### Added
 - **Self-update to the latest GitHub release**: `memory_self_update` MCP tool +

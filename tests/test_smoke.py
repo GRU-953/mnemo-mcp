@@ -338,6 +338,42 @@ def test_updater_version_compare():
         up.latest_release = real
 
 
+def test_pipeline_health_structure():
+    from mnemo.core import pipeline
+    h = pipeline.health()
+    assert {"ollama", "tesseract", "hardware", "ollama_tuning", "ingest_workers",
+            "store", "projects"} <= set(h)
+    assert isinstance(h["projects"], list)
+    assert "apple_silicon" in h["hardware"]
+
+
+def test_digest_empty_graph():
+    from mnemo.core import digest
+    proj = "empty-proj"
+    store.ensure_project(proj)
+    store.save_graph(proj, {"nodes": [], "edges": [], "facts": []})
+    store.save_meta(proj, {"name": "Empty"})
+    res = digest.build_digest(proj, llm_overview=False)
+    md = store.memory_md_path(proj).read_text(encoding="utf-8")
+    assert "Project Memory" in md and res["approx_tokens"] >= 0
+
+
+def test_store_roundtrip():
+    import hashlib
+    import os
+    import tempfile
+    p = "rt-proj"
+    store.ensure_project(p)
+    store.save_graph(p, {"nodes": [{"id": "a", "name": "A"}], "edges": [], "facts": []})
+    assert store.load_graph(p)["nodes"][0]["id"] == "a"
+    assert any(x["id"] == p for x in store.list_projects())
+    fd, path = tempfile.mkstemp()
+    os.write(fd, b"hello")
+    os.close(fd)
+    assert store.file_hash(path) == hashlib.sha256(b"hello").hexdigest()
+    os.unlink(path)
+
+
 def _run_all():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     passed = 0
