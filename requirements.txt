@@ -3,12 +3,14 @@
 
 mcp>=1.8.0                                          # FastMCP server (mnemo/server.py)
 markitdown[pdf,docx,pptx,xlsx,xls]>=0.1.1,<0.2.0    # document -> Markdown (Microsoft, MIT)
-pytesseract>=0.3.10                                 # OCR (wraps system Tesseract)
 pypdfium2>=4.0.0                                    # render PDF pages for OCR
 Pillow>=10.0.0                                      # image handling
 requests>=2.31.0                                    # talk to local Ollama HTTP API
 numpy>=1.26.0                                        # vector store / cosine retrieval
 jinja2>=3.1.0                                        # render mindmap.html
 
+# OCR uses the system `tesseract` binary directly (installed by scripts/install.sh),
+# so no Python OCR wrapper is needed.
+#
 # Optional (audio/video transcription); install with scripts/install.sh --with-audio
 # faster-whisper>=1.0.0
