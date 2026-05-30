@@ -104,6 +104,44 @@ def test_expand():
     assert len(res["relations"]) >= 1
 
 
+def test_partial_error_rollback():
+    """A document whose chunks error part-way must leave NO partial entities and
+    must not be marked done (so resume re-extracts it cleanly)."""
+    from mnemo.core import extract as ex
+    proj = "rollback-proj"
+    sd = store.project_dir(proj) / "sources"
+    sd.mkdir(parents=True, exist_ok=True)
+    (sd / "a.md").write_text("# A\n" + ("alpha " * 60), encoding="utf-8")
+    (sd / "b.md").write_text("# B\n" + ("beta " * 3000), encoding="utf-8")  # -> multiple chunks
+
+    real = ex.extract_chunk
+    state = {"b_chunk": 0}
+
+    def fake(text, *, model=None, source=None):
+        f = (source or {}).get("file", "")
+        if f == "a.md":
+            return {"entities": [{"name": "Alpha", "type": "Concept", "description": "", "aliases": [], "source": source}], "relations": [], "facts": []}
+        if f == "b.md":
+            state["b_chunk"] += 1
+            if state["b_chunk"] == 1:  # first chunk succeeds...
+                return {"entities": [{"name": "BetaPartial", "type": "Concept", "description": "", "aliases": [], "source": source}], "relations": [], "facts": []}
+            return {"entities": [], "relations": [], "facts": [], "error": "simulated outage"}  # ...then errors
+        return {"entities": [], "relations": [], "facts": []}
+
+    ex.extract_chunk = fake
+    try:
+        ex.extract_project(proj, resume=False)
+    finally:
+        ex.extract_chunk = real
+
+    d = store.read_json(store.project_dir(proj) / "extractions.json")
+    names = {e["name"] for e in d["entities"]}
+    done = set(d.get("done_files", []))
+    assert "Alpha" in names, names
+    assert "BetaPartial" not in names, "partial results from an errored doc must be rolled back"
+    assert "a.md" in done and "b.md" not in done, f"errored doc must not be marked done: {done}"
+
+
 def _run_all():
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     passed = 0

@@ -7,6 +7,7 @@ facts, each tagged with provenance (source file + chunk). All local; no tokens.
 from __future__ import annotations
 
 import re
+import time
 from pathlib import Path
 from typing import Any, Callable
 
@@ -110,14 +111,21 @@ def extract_chunk(text: str, *, model: str | None = None, source: dict | None = 
     model = model or config.EXTRACT_MODEL
     src = source or {}
     prompt = f"{_schema_hint()}\n\nDOCUMENT CHUNK:\n\"\"\"\n{text}\n\"\"\"\n\nJSON:"
-    try:
-        raw = oll.generate(
-            prompt, model=model, system=EXTRACT_SYSTEM, fmt="json",
-            temperature=config.EXTRACT_TEMPERATURE, num_ctx=config.EXTRACT_NUM_CTX,
-            num_predict=1024, keep_alive="30m", timeout=400,
-        )
-    except Exception as e:
-        return {"entities": [], "relations": [], "facts": [], "error": str(e)}
+    raw = None
+    last_err = None
+    for attempt in range(3):  # retry transient Ollama errors (cold load, contention)
+        try:
+            raw = oll.generate(
+                prompt, model=model, system=EXTRACT_SYSTEM, fmt="json",
+                temperature=config.EXTRACT_TEMPERATURE, num_ctx=config.EXTRACT_NUM_CTX,
+                num_predict=1024, keep_alive="30m", timeout=400,
+            )
+            break
+        except Exception as e:
+            last_err = str(e)
+            time.sleep(2 + attempt * 3)
+    if raw is None:
+        return {"entities": [], "relations": [], "facts": [], "error": last_err or "ollama error"}
     data = oll.parse_json(raw) or {}
 
     entities: list[dict] = []
@@ -208,6 +216,7 @@ def extract_project(
     n_chunks = int((prior.get("stats") or {}).get("chunks", 0) or 0)
     seen_hashes: dict[str, str] = {}
     skipped_dups: list[str] = []
+    consec_errors = 0
 
     for fi, mdf in enumerate(md_files):
         rel = str(mdf.relative_to(proj / "sources"))
@@ -228,25 +237,48 @@ def extract_project(
         seen_hashes[h] = rel
 
         chunks = chunk_markdown(text)[: config.MAX_CHUNKS_PER_DOC]
+        doc_errored = False
+        # Snapshot accumulator sizes so a document that errors part-way through can
+        # be fully rolled back. Otherwise its successful chunks would be persisted on
+        # the next clean checkpoint and then duplicated when the doc is re-extracted
+        # from chunk 0 on resume (inflating entities/relations/facts and the counter).
+        pre_e, pre_r, pre_f, pre_n = len(all_entities), len(all_relations), len(all_facts), n_chunks
         for ci, ch in enumerate(chunks):
-            src = {"file": rel, "chunk": ci}
-            res = extract_chunk(ch, model=model, source=src)
+            res = extract_chunk(ch, model=model, source={"file": rel, "chunk": ci})
+            if res.get("error"):
+                doc_errored = True
+                consec_errors += 1
+                if consec_errors >= 6:
+                    raise RuntimeError(
+                        f"Ollama appears unavailable ({res['error']}). Progress is "
+                        f"checkpointed — fix Ollama and re-run to resume.")
+                continue
+            consec_errors = 0
             all_entities.extend(res["entities"])
             all_relations.extend(res["relations"])
             all_facts.extend(res["facts"])
             n_chunks += 1
-        done_files.add(rel)
-        # Checkpoint after each document: long builds become resumable/inspectable,
-        # and an interruption never loses completed work.
-        store.write_json(proj / "extractions.json", {
-            "entities": all_entities, "relations": all_relations, "facts": all_facts,
-            "done_files": sorted(done_files),
-            "stats": {"docs_done": len(done_files), "docs": len(md_files), "chunks": n_chunks,
-                      "raw_entities": len(all_entities), "raw_relations": len(all_relations),
-                      "raw_facts": len(all_facts)},
-        })
+        if doc_errored:
+            # Roll back this document's partial results so a resume re-extracts it
+            # cleanly with no duplication.
+            del all_entities[pre_e:]
+            del all_relations[pre_r:]
+            del all_facts[pre_f:]
+            n_chunks = pre_n
+        else:
+            # Checkpoint only on clean extraction, so a transient outage never marks
+            # documents complete with empty/partial results.
+            done_files.add(rel)
+            store.write_json(proj / "extractions.json", {
+                "entities": all_entities, "relations": all_relations, "facts": all_facts,
+                "done_files": sorted(done_files),
+                "stats": {"docs_done": len(done_files), "docs": len(md_files), "chunks": n_chunks,
+                          "raw_entities": len(all_entities), "raw_relations": len(all_relations),
+                          "raw_facts": len(all_facts)},
+            })
         if progress:
-            progress(fi + 1, len(md_files), f"{rel}  ({len(chunks)} chunks)")
+            tag = " (ERRORED — rolled back, will retry)" if doc_errored else ""
+            progress(fi + 1, len(md_files), f"{rel}  ({len(chunks)} chunks){tag}")
 
     raw = {
         "entities": all_entities,
