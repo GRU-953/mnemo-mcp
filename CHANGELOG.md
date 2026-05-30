@@ -3,6 +3,15 @@
 All notable changes to **Mnemo** are documented here. Versioning is semver-ish
 during 0.x.
 
+## [0.5.0] — On-demand local LLM
+### Added
+- **On-demand Ollama lifecycle** (Apple-silicon memory): the local LLM starts only
+  when a task needs it and stops after `MNEMO_OLLAMA_IDLE` (default 300s) of
+  inactivity. A detached watchdog stops a *Mnemo-started* server (never a
+  brew/user-launched one), and models unload via an idle-aligned keep-alive, so
+  idle RAM drops to ~0. `install.sh` disables the always-on service. State is shown
+  in `mnemo status`; tune via `MNEMO_OLLAMA_IDLE` / disable via `MNEMO_OLLAMA_LIFECYCLE=off`.
+
 ## [0.4.0]
 ### Added
 - `memory_stats` MCP tool + `mnemo stats` — graph analytics (entity/relationship/fact

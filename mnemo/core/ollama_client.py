@@ -66,6 +66,10 @@ def generate(
     """Single-shot completion. `fmt` may be "json" or a JSON-schema dict
     (Ollama structured outputs). `keep_alive` keeps the model resident between
     calls (e.g. "30m") to avoid reloads during a build. Returns response text."""
+    from . import lifecycle
+    lifecycle.ensure_up()  # start the local LLM on demand
+    if keep_alive is None:
+        keep_alive = lifecycle.keep_alive()  # unload model on inactivity
     options: dict[str, Any] = {"temperature": temperature, "num_ctx": num_ctx}
     if num_predict is not None:
         options["num_predict"] = num_predict
@@ -93,8 +97,12 @@ def embed(texts: list[str], *, model: str | None = None, timeout: float = 180.0)
     model = model or config.EMBED_MODEL
     if not texts:
         return []
+    from . import lifecycle
+    lifecycle.ensure_up()
+    ka = lifecycle.keep_alive()
     try:
-        r = requests.post(f"{_host()}/api/embed", json={"model": model, "input": texts}, timeout=timeout)
+        r = requests.post(f"{_host()}/api/embed",
+                          json={"model": model, "input": texts, "keep_alive": ka}, timeout=timeout)
         if r.ok:
             embs = r.json().get("embeddings")
             if embs and len(embs) == len(texts):
