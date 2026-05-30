@@ -1,0 +1,39 @@
+# ── Python venv & caches (rebuilt by scripts/install.sh) ──
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ── OS junk ──
+.DS_Store
+.localized
+Thumbs.db
+
+# ── Secrets / env ──
+.env
+*.env
+*.pem
+*.key
+
+# ── Local-only scratch / dev ──
+.mnemo-local/
+*.log
+.claude/launch.json
+.claude/
+
+# ════════════════════════════════════════════════════════════════════
+# SAFETY: project memory & all converted source text live OUTSIDE this
+# repo (in ~/.claude-memory/). They must NEVER be committed. The lines
+# below are belt-and-suspenders in case anyone points the store here.
+# ════════════════════════════════════════════════════════════════════
+.claude-memory/
+**/.claude-memory/
+projects/*/sources/
+projects/*/graph.json
+projects/*/memory.md
+projects/*/index/
+**/memory_store/
